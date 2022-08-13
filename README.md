@@ -1,5 +1,5 @@
 # BullsCows (Быки-Коровы)
-Приложение для игры в быки-коровы
+Приложение для игры в быки-коровы \
 [GitHub](https://github.com/pypi-zedzhen/BullsCows)
 
 ## Установка
