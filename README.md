@@ -3,7 +3,7 @@
 [GitHub](https://github.com/pypi-zedzhen/BullsCows)
 
 ## Установка
-> pip install BullsCows --index-url=pypi.zedzhen.ru
+> pip install BullsCows --index-url=https://pypi.zedzhen.ru/simple
 
 ## Запуск
 > python -m BC
