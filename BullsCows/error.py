@@ -19,6 +19,10 @@ class BCTypeError(BCError, TypeError):
         return cls(f'`{param_name}` must be `{correct_class[0]}` or `{correct_class[1]}`, not `{type(param).__name__}`')
 
 
+class BCFileExistsError(BCError, FileExistsError):
+    pass
+
+
 class BCValueError(BCError, ValueError):
     pass
 

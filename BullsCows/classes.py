@@ -1,6 +1,7 @@
 import secrets
 from dataclasses import dataclass
 from warnings import warn
+
 from pkg_resources import iter_entry_points
 
 from . import error
@@ -56,11 +57,6 @@ class BCDict(dict[str, int]):
         return sum(self.values())
 
 
-class DictKey2Attr(dict):
-    def __getattr__(self, name):
-        return self[name]
-
-
 @dataclass(eq=False)
 class StandardSymbol:
     symbols: str
@@ -71,6 +67,14 @@ class StandardSymbol:
     def __post_init__(self):
         if self.case_sensitive and self.symbols_upper is None:
             self.symbols_upper = self.symbols.upper()
+
+
+class SafeStr(str):
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except IndexError:
+            return ''
 
 
 class SymbolsDict(dict[str, StandardSymbol]):
@@ -100,8 +104,6 @@ class SymbolsDict(dict[str, StandardSymbol]):
     def __setitem__(self, key: str, value: StandardSymbol) -> None:
         check_type(key, str, 'key')
         check_type(value, StandardSymbol, 'value')
-        if len(key) != self.LEN:
-            raise error.BCValueError(f'len(`key`) must be {self.LEN}, not {len(key)}')
         super().__setitem__(key, value)
 
     @classmethod
@@ -118,11 +120,38 @@ class SymbolsDict(dict[str, StandardSymbol]):
 
     @classmethod
     def unzip(cls, zip_str: str) -> str:
+        check_type(zip_str, str, 'zip_str')
+        zip_str = SafeStr(zip_str)
+
         d = cls.load()
         unzip_str = ''
-        for i in range(0, len(zip_str) - cls.LEN + 1, cls.LEN):
-            s = zip_str[i:i + 2]
-            unzip_str += d.get_symbols(s)
+        i = 0
+        while i < len(zip_str):
+            char = zip_str[i]
+            if char == '/':
+                unzip_str += zip_str[i + 1]
+                i += 2
+                continue
+            if char != '_':
+                unzip_str += char
+                i += 1
+                continue
+            if zip_str[i + 1] != '_':
+                key = zip_str[i + 1:i + cls.LEN + 1]
+                unzip_str += d.get_symbols(key)
+                i += cls.LEN + 1
+                continue
+            i += 2
+            key = ''
+            while zip_str[i] != '_':
+                if i == len(zip_str):
+                    warn(error.ValueWarn(f'in `zip_str`, not end key (begin key `{key}`)'))
+                    break
+                key += zip_str[i]
+                i += 1
+            else:
+                i += 1
+                unzip_str += d.get_symbols(key)
         return unzip_str
 
 
@@ -139,7 +168,7 @@ class Result:
     def __str__(self, format: BCStr = BCStr('Быков: %b, Коров %c')):
         check_type(format, BCStr, 'format')
         return format.replace_dict({'%b': str(self.bulls),
-                                   '%c': str(self.cows)})
+                                    '%c': str(self.cows)})
 
 
 class Game:
@@ -161,6 +190,8 @@ class Game:
         self.ans = None
 
     def start(self) -> None:
+        if self.started or self.win:
+            return
         self.started = True
         self.ans = self.gen()
         if not self.case_sensitive:

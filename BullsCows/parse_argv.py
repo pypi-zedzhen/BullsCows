@@ -1,11 +1,14 @@
-from sys import argv
-from typing import Union, Any
+from os.path import join
+from sys import argv, exit
+from typing import Any, Union
 
 from docopt import docopt
 
-from .classes import BCStr, DictKey2Attr
-from .funcs import check_type
+from .__init__ import __version__
+from .classes import BCStr
+from .const import DIRECTORY, EXTENSION
 from .error import BCTypeError
+from .funcs import check_type
 from .out import eprint
 
 
@@ -87,6 +90,7 @@ main = Help("""
 Использование:
     BC -h | --help              Для вывода этого сообщения
     BC -V | --version           Для получения версии
+    BC --new                    Что нового в версии
     BC <команда> (-h | --help)  Справка по команде
     BC <команда> [параметры]    Для использования команды
 
@@ -97,7 +101,9 @@ main = Help("""
     -V --version         Версия программы
 
 Команды:
-    play  запуск игры в Быки-Коровы
+    play       запуск игры в Быки-Коровы
+    new_game   создание новой игры
+    play_game  Запуск существующей игры
 """)
 
 COMMANDS = DictCommand(
@@ -108,11 +114,39 @@ COMMANDS = DictCommand(
     BC play [--len=<len>] [--symbols=<symbols>] [--case-sensitive]
 
 Параметры:
-    -h --help            Это сообщение
-    -V --version         Версия программы
-    --len=<len>          Длина последовательности
-    --symbols=<symbols>  Допустимые символы
-    --case-sensitive     Регистрозависимая игра
+    -h --help             Это сообщение
+    --len=<len>           Длина последовательности
+    --symbols=<symbols>   Допустимые символы
+    -c, --case-sensitive  Регистрозависимая игра
+""",
+        'new_game': f"""
+Использование:
+    BC new_game -h | --help
+    BC new_game [--len=<len>] [--symbols=<symbols>] [--case-sensitive] 
+                [--dir=<dir>] [--name=<name> [-f] [-E | --no-extension]] [-s | --start [-d | --delete]]
+
+Параметры:
+    -h --help             Это сообщение
+    --len=<len>           Длина последовательности
+    --symbols=<symbols>   Допустимые символы
+    -c, --case-sensitive  Регистрозависимая игра
+    --dir=<dir>           Директория для сохранения [по умолчанию: {join('.', DIRECTORY)}]
+    --name=<name>         Имя сохранения
+    -f                    Перезаписать файл
+    -E, --no-extension    Не добавлять расширение {EXTENSION} (по умолчанию добавляется, если нет)
+
+    -s, --start           Запустить игру
+    -d, --delete          Удалить файл игры после выигрыша
+""",
+        'play_game': """
+Использование:
+    BC play_game -h | --help
+    BC play_game <filename> [-d | --delete]
+
+Параметры:
+    -h --help     Это сообщение
+    <filename>    Файл сохранения игры
+    -d, --delete  Удалить файл игры после выигрыша
 """,
     }
 )
@@ -128,7 +162,7 @@ def err_parse(message: str = '', help_: Help = main):
     exit(1)
 
 
-def parse(version: str = '', prog_name: str = '') -> tuple[str, DictKey2Attr[str, Any]]:
+def parse(prog_name: str = '') -> tuple[str, dict[str, Any]]:
     if prog_name:
         prog_name += '\n'
     else:
@@ -141,16 +175,23 @@ def parse(version: str = '', prog_name: str = '') -> tuple[str, DictKey2Attr[str
         print(main.ru)
         exit(0)
     if command in ('-V', '--version'):
-        print(f"{prog_name}Версия: {version}")
+        print(f"{prog_name}Версия: {__version__}")
+        exit(0)
+    if command == '--new':
+        print(f"""Что нового в версии `{__version__}`:
+1) Добавлена эта команда (флаг `--new`)
+2) Добавлены команды `new_game` и `play_game`
+3) Изменён вариант выбора символов (подробнее в README)
+""")
         exit(0)
 
     help_ = COMMANDS[command]
     try:
-        args = docopt(help_.en, help=False)
+        args = dict(docopt(help_.en, help=False))
     except SystemExit:
         err_parse(help_=help_)
     # noinspection PyUnboundLocalVariable
     if args['--help']:
         print(help_.ru)
         exit(0)
-    return command, DictKey2Attr(args)
+    return command, args
